@@ -1,0 +1,73 @@
+.gitignore
+  s_1c6263a20c3453::t_e9c9636f0625f1 1-6
+src/crimescene/metrics/__init__.py
+  s_1c6263a20c3453::t_cc2d221993aad8 1-4
+tests/test_git.py
+  s_1c6263a20c3453::t_9b0cdad4e9cfdb 1-16
+src/crimescene/__main__.py
+  s_1c6263a20c3453::t_9b0cdad4e9cfdb 1-5
+pyproject.toml
+  s_1c6263a20c3453::t_e9c9636f0625f1 1-28
+src/crimescene/model.py
+  s_1c6263a20c3453::t_e9c9636f0625f1 1-53
+src/crimescene/config.py
+  s_1c6263a20c3453::t_cc2d221993aad8 1-40
+src/crimescene/complexity.py
+  s_1c6263a20c3453::t_e9c9636f0625f1 1-43
+src/crimescene/metrics/registry.py
+  s_1c6263a20c3453::t_cc2d221993aad8 1-25
+src/crimescene/report/blocks.py
+  s_1c6263a20c3453::t_cc2d221993aad8 1-26
+README.md
+  s_1c6263a20c3453::t_ea25f85364b3ac 5-28
+  s_1c6263a20c3453::t_9760a5452baaaf 1-4,29-102
+tests/conftest.py
+  s_1c6263a20c3453::t_9b0cdad4e9cfdb 1-35
+src/crimescene/cli.py
+  s_1c6263a20c3453::t_9b0cdad4e9cfdb 1-72
+src/crimescene/context.py
+  s_1c6263a20c3453::t_cc2d221993aad8 1-66
+src/crimescene/metrics/coupling.py
+  s_1c6263a20c3453::t_cd1f44a902ee2e 1-57
+src/crimescene/report/__init__.py
+  s_1c6263a20c3453::t_cc2d221993aad8 1-4
+src/crimescene/metrics/age_churn.py
+  s_1c6263a20c3453::t_cd1f44a902ee2e 1-82
+src/crimescene/metrics/hotspots.py
+  s_1c6263a20c3453::t_cd1f44a902ee2e 1-42
+src/crimescene/metrics/social.py
+  s_1c6263a20c3453::t_cd1f44a902ee2e 1-118
+src/crimescene/report/markdown.py
+  s_1c6263a20c3453::t_cd1f44a902ee2e 7,10-13
+  s_1c6263a20c3453::t_cc2d221993aad8 1-6,8-9,14-73
+src/crimescene/analyzer.py
+  s_1c6263a20c3453::t_9b0cdad4e9cfdb 1-26
+src/crimescene/__init__.py
+  s_1c6263a20c3453::t_e9c9636f0625f1 1-3
+tests/test_analysis.py
+  s_1c6263a20c3453::t_6c9150ac0b5200 5,29
+  s_1c6263a20c3453::t_9b0cdad4e9cfdb 1-4,6-28,30-43
+src/crimescene/metrics/builtin.py
+  s_1c6263a20c3453::t_cc2d221993aad8 1-3
+src/crimescene/git.py
+  s_1c6263a20c3453::t_6c9150ac0b5200 56-60,66
+  s_1c6263a20c3453::t_e9c9636f0625f1 1-55,61-65,67-109
+src/crimescene/metrics/base.py
+  s_1c6263a20c3453::t_cc2d221993aad8 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b85383bb1f9b1812bf93bcddea39e35cfd66b129",
+  "prompts": {},
+  "sessions": {
+    "s_1c6263a20c3453": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7113b1d9-24cb-4d37-88b6-8dd016d43783",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Adrián Perreau <aperreau@gmail.com>"
+    }
+  }
+}
