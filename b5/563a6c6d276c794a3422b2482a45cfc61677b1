@@ -1,0 +1,23 @@
+tests/test_analysis.py
+  s_1c6263a20c3453::t_4ed34073dc32b8 44-56
+README.md
+  s_1c6263a20c3453::t_4ed34073dc32b8 31
+src/crimescene/cli.py
+  s_1c6263a20c3453::t_4ed34073dc32b8 22-24,44-51,53-65,74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5563a6c6d276c794a3422b2482a45cfc61677b1",
+  "prompts": {},
+  "sessions": {
+    "s_1c6263a20c3453": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7113b1d9-24cb-4d37-88b6-8dd016d43783",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Adrián Perreau <aperreau@gmail.com>"
+    }
+  }
+}
