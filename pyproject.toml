@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "crimescene"
+version = "0.1.0"
+description = "Mine git repositories for Code-as-a-Crime-Scene style metrics and write Markdown reports."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+crimescene = "crimescene.cli:main"
+
+# Third-party packages can add metrics by declaring an entry point:
+# [project.entry-points."crimescene.metrics"]
+# my_metric = "my_package.metric:MyMetric"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/crimescene"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
