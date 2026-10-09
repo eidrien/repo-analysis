@@ -48,10 +48,12 @@ class Social(Metric):
             main, n = counter.most_common(1)[0]
             owners[path] = (main, n / sum(counter.values()), len(counter))
 
+        exclusive = Counter(next(iter(c)) for c in lines.values() if len(c) == 1)
+
         authors_table = Table(
-            ["Author", "Commits", "Files touched", "Lines added", "First commit", "Last commit", "Status"],
+            ["Author", "Commits", "Files touched", "Exclusive files", "Lines added", "First commit", "Last commit", "Status"],
             [
-                [a, n, len(files_by[a]), added_by[a], f"{first_seen[a]:%Y-%m-%d}", f"{last_seen[a]:%Y-%m-%d}",
+                [a, n, len(files_by[a]), f"{exclusive[a] / len(lines):.0%}", added_by[a], f"{first_seen[a]:%Y-%m-%d}", f"{last_seen[a]:%Y-%m-%d}",
                  "inactive" if a in inactive else "active"]
                 for a, n in commits_by.most_common(o["top"])
             ],
@@ -93,6 +95,7 @@ class Social(Metric):
         )
 
         summary = (
+            "Exclusive files is the share of all files in the analyzed history that only that author has ever changed. "
             "Ownership is based on lines added + deleted per author (renames followed). "
             "Per Conway's law, the files that many authors touch are where team communication matters most."
         )
