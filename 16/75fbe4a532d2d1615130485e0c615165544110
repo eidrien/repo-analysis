@@ -1,0 +1,20 @@
+src/crimescene/metrics/social.py
+  s_1c6263a20c3453::t_3cf8644bc2c47b 56,98
+  s_1c6263a20c3453::t_12c82d94857293 51-52,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1675fbe4a532d2d1615130485e0c615165544110",
+  "prompts": {},
+  "sessions": {
+    "s_1c6263a20c3453": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7113b1d9-24cb-4d37-88b6-8dd016d43783",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Adrián Perreau <aperreau@gmail.com>"
+    }
+  }
+}
