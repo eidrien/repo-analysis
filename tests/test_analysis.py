@@ -41,3 +41,16 @@ def test_unknown_metric_rejected(sample_repo, tmp_path):
     import pytest
     with pytest.raises(ValueError):
         analyze_repository(sample_repo, Config(metrics=["nope"]), tmp_path)
+
+
+def test_scan_dir_analyzes_direct_subrepos(sample_repo, tmp_path):
+    from crimescene.cli import find_repos, main
+
+    root = sample_repo.parent
+    (root / "plain").mkdir()
+    (root / "plain" / "x.txt").write_text("not a repo")
+    assert find_repos(root) == [sample_repo]
+    out = tmp_path / "out"
+    assert main(["analyze", "--scan-dir", str(root), "-o", str(out)]) == 0
+    assert (out / "sample" / "index.md").exists()
+    assert main(["analyze"]) == 1

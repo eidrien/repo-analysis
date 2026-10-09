@@ -28,6 +28,7 @@ You can also run it without the script entry point: `python3 -m crimescene analy
 
 ```
 crimescene analyze ../some-repo ../other-repo -o reports
+crimescene analyze --scan-dir ~/code        # every git repo directly inside ~/code
 crimescene analyze . --since 2024-01-01 -m hotspots,coupling -x "docs/*"
 crimescene analyze . -c crimescene.toml
 crimescene metrics            # list metrics and their options
