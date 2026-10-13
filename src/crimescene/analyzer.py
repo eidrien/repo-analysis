@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .config import Config
-from .context import build_context
+from .context import AnalysisContext, build_context, build_merged_context
 from .metrics import MetricResult, available_metrics
 from .report import write_reports
 
@@ -19,8 +19,17 @@ def select_metrics(config: Config):
     return [registry[n](config.metric_options.get(n)) for n in names]
 
 
-def analyze_repository(repo: Path, config: Config, out_dir: Path) -> Path:
-    metrics = select_metrics(config)
-    ctx = build_context(repo, config)
-    results: list[MetricResult] = [m.analyze(ctx) for m in metrics]
+def _run(ctx: AnalysisContext, config: Config, out_dir: Path) -> Path:
+    results: list[MetricResult] = [m.analyze(ctx) for m in select_metrics(config)]
     return write_reports(ctx, results, out_dir)
+
+
+def analyze_repository(repo: Path, config: Config, out_dir: Path) -> Path:
+    select_metrics(config)  # fail on unknown metric names before reading git history
+    return _run(build_context(repo, config), config, out_dir)
+
+
+def analyze_merged(repos: list[Path], config: Config, out_dir: Path, name: str) -> Path:
+    """Analyze several repositories as if they were a single one."""
+    select_metrics(config)
+    return _run(build_merged_context(repos, config, name), config, out_dir)

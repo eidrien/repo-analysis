@@ -51,6 +51,7 @@ def render_index(ctx: AnalysisContext, results: list[MetricResult], filenames: d
         ["Item", "Value"],
         [
             ["Repository", ctx.name],
+            *([["Merged repositories", ", ".join(r.name for r in ctx.roots.values())]] if len(ctx.roots) > 1 else []),
             ["Commits analyzed", len(h)],
             ["Authors", len(h.authors)],
             ["Period", span],

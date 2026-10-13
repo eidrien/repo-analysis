@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .analyzer import analyze_repository
+from .analyzer import analyze_merged, analyze_repository
 from .config import Config
 from .git import GitError, is_git_repo
 from .metrics import available_metrics
@@ -22,6 +22,9 @@ def _build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("repos", nargs="*", type=Path, help="Paths to git repositories")
     analyze.add_argument("-d", "--scan-dir", action="append", default=[], type=Path, metavar="FOLDER",
                          help="Analyze every git repository in the direct subfolders of FOLDER (repeatable)")
+    analyze.add_argument("--merge", action="store_true",
+                         help="Merge all given repositories into one combined analysis instead of one report each")
+    analyze.add_argument("--name", default="combined", help="Report folder name for --merge (default: combined)")
     analyze.add_argument("-o", "--output", type=Path, default=Path("reports"), help="Output directory (default: reports)")
     analyze.add_argument("-c", "--config", type=Path, help="TOML config file")
     analyze.add_argument("--since", help="Only commits after this date (git syntax, e.g. 2024-01-01)")
@@ -70,6 +73,9 @@ def _analyze(args: argparse.Namespace) -> int:
     if args.metrics:
         config.metrics = [m.strip() for m in args.metrics.split(",") if m.strip()]
 
+    if args.merge:
+        return _analyze_merged(repos, config, args)
+
     status = 0
     for repo in repos:
         if not is_git_repo(repo):
@@ -84,6 +90,21 @@ def _analyze(args: argparse.Namespace) -> int:
             continue
         print(f"{repo} -> {target / 'index.md'}")
     return status
+
+
+def _analyze_merged(repos: list[Path], config: Config, args: argparse.Namespace) -> int:
+    bad = [r for r in repos if not is_git_repo(r)]
+    if bad:
+        for repo in bad:
+            print(f"error: {repo} is not a git repository", file=sys.stderr)
+        return 1
+    try:
+        target = analyze_merged(repos, config, args.output, args.name)
+    except (GitError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(f"{len(repos)} repositories merged -> {target / 'index.md'}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

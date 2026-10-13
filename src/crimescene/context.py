@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from fnmatch import fnmatch
 from functools import cached_property
@@ -12,7 +12,7 @@ from pathlib import Path
 from . import git
 from .complexity import FileComplexity, measure_file
 from .config import Config
-from .model import RepoHistory
+from .model import Commit, FileChange, RepoHistory
 
 
 def is_excluded(path: str, patterns: list[str]) -> bool:
@@ -22,7 +22,7 @@ def is_excluded(path: str, patterns: list[str]) -> bool:
 
 @dataclass
 class AnalysisContext:
-    repo: Path
+    roots: dict[str, Path]  # path prefix -> repository root ("" when analyzing one repo)
     name: str
     history: RepoHistory  # already filtered by config.exclude
     config: Config
@@ -34,7 +34,12 @@ class AnalysisContext:
 
     @cached_property
     def current_files(self) -> set[str]:
-        return {f for f in git.list_files(self.repo) if not is_excluded(f, self.config.exclude)}
+        return {
+            prefix + f
+            for prefix, root in self.roots.items()
+            for f in git.list_files(root)
+            if not is_excluded(f, self.config.exclude)
+        }
 
     @cached_property
     def revisions(self) -> Counter[str]:
@@ -48,19 +53,52 @@ class AnalysisContext:
     def complexity(self) -> dict[str, FileComplexity]:
         """Complexity of each current text file (working tree)."""
         result: dict[str, FileComplexity] = {}
-        for path in self.current_files:
-            measured = measure_file(self.repo / path)
-            if measured is not None:
-                result[path] = measured
+        for prefix, root in self.roots.items():
+            for path in git.list_files(root):
+                if prefix + path not in self.current_files:
+                    continue
+                measured = measure_file(root / path)
+                if measured is not None:
+                    result[prefix + path] = measured
         return result
+
+
+def _load_commits(root: Path, config: Config, prefix: str) -> list[Commit]:
+    """Filtered history of one repo with paths prefixed (empty prefix = unchanged)."""
+    kept = []
+    for commit in git.read_history(root, config.since, config.until).commits:
+        changes = tuple(
+            FileChange(prefix + c.path, c.added, c.deleted)
+            for c in commit.changes
+            if not is_excluded(c.path, config.exclude)
+        )
+        if changes:
+            kept.append(replace(commit, changes=changes))
+    return kept
 
 
 def build_context(repo: Path, config: Config) -> AnalysisContext:
     root = git.repo_root(repo)
-    history = git.read_history(root, config.since, config.until)
-    kept = []
-    for commit in history.commits:
-        changes = tuple(c for c in commit.changes if not is_excluded(c.path, config.exclude))
-        if changes:
-            kept.append(type(commit)(commit.sha, commit.author, commit.email, commit.date, commit.message, changes))
-    return AnalysisContext(root, root.name, RepoHistory(kept), config)
+    history = RepoHistory(_load_commits(root, config, ""))
+    return AnalysisContext({"": root}, root.name, history, config)
+
+
+def build_merged_context(repos: list[Path], config: Config, name: str) -> AnalysisContext:
+    """Treat several repositories as one; paths become `<repo name>/<path>`."""
+    roots: dict[str, Path] = {}
+    for repo in repos:
+        root = git.repo_root(repo)
+        prefix = f"{root.name}/"
+        if prefix in roots:
+            raise ValueError(f"Two repositories share the folder name '{root.name}'; cannot merge")
+        roots[prefix] = root
+
+    seen: set[str] = set()  # the same commit can exist in several clones/forks
+    commits: list[Commit] = []
+    for prefix, root in roots.items():
+        for commit in _load_commits(root, config, prefix):
+            if commit.sha not in seen:
+                seen.add(commit.sha)
+                commits.append(commit)
+    commits.sort(key=lambda c: c.date)
+    return AnalysisContext(roots, name, RepoHistory(commits), config)

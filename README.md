@@ -29,12 +29,15 @@ You can also run it without the script entry point: `python3 -m crimescene analy
 ```
 crimescene analyze ../some-repo ../other-repo -o reports
 crimescene analyze --scan-dir ~/code        # every git repo directly inside ~/code
+crimescene analyze --merge -d ~/code --name team   # one combined report for all repos
 crimescene analyze . --since 2024-01-01 -m hotspots,coupling -x "docs/*"
 crimescene analyze . -c crimescene.toml
 crimescene metrics            # list metrics and their options
 ```
 
 Output: `reports/<repo>/index.md` plus one `<metric>.md` per metric.
+
+With `--merge`, all given repositories (paths and/or `--scan-dir`) are analyzed as one repository and written to `reports/<--name>/` (default `combined`). File paths are prefixed with the repo folder name (`repo/src/a.py`), identical commits present in several clones are counted once, and repo folder names must be unique.
 
 ## Built-in metrics
 
@@ -43,6 +46,7 @@ Output: `reports/<repo>/index.md` plus one `<metric>.md` per metric.
 | `hotspots` | change frequency × indentation complexity per file |
 | `coupling` | temporal coupling between files changed in the same commit |
 | `age_churn` | code age distribution, monthly churn, highest-churn files |
+| `weekly_activity` | commits per contributor for the last N calendar weeks and average weekly commits per previous month |
 | `social` | authors, ownership, knowledge-loss risk, truck factor, communication paths |
 
 ## Configuration (`crimescene.toml`)

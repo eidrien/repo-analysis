@@ -33,7 +33,7 @@ def test_social_truck_factor(sample_repo):
 def test_end_to_end_writes_reports(sample_repo, tmp_path):
     out = analyze_repository(sample_repo, Config(), tmp_path / "out")
     names = {p.name for p in out.iterdir()}
-    assert names == {"index.md", "hotspots.md", "coupling.md", "age_churn.md", "social.md"}
+    assert names == {"index.md", "hotspots.md", "coupling.md", "age_churn.md", "social.md", "weekly_activity.md"}
     assert "[Hotspots](hotspots.md)" in (out / "index.md").read_text()
 
 
@@ -54,3 +54,28 @@ def test_scan_dir_analyzes_direct_subrepos(sample_repo, tmp_path):
     assert main(["analyze", "--scan-dir", str(root), "-o", str(out)]) == 0
     assert (out / "sample" / "index.md").exists()
     assert main(["analyze"]) == 1
+
+
+def test_weekly_activity_table(sample_repo):
+    ctx = build_context(sample_repo, Config())
+    # 2024-08-10 is a Saturday; the commit on 2024-07-10 (Bob) falls in July.
+    metric = available_metrics()["weekly_activity"]({"as_of": "2024-08-19", "months": 2})
+    table = metric.analyze(ctx).blocks[0]
+    assert table.headers[1].startswith("Week -1 (Aug 12)")
+    assert table.headers[5].startswith("Month -1 (Jul 2024)")
+    by_name = {r[0]: r for r in table.rows}
+    assert by_name["Bob"][1:5] == [0, 1, 0, 0]  # rename commit on Sat Aug 10 -> week -2
+    assert by_name["Bob"][5] == 1 / (31 / 7)  # July: one commit
+    assert table.rows[-1][0] == "**Total**"
+
+
+def test_merge_combines_repos(sample_repo, tmp_path):
+    import shutil
+    from crimescene.analyzer import analyze_merged
+
+    clone = tmp_path / "other"
+    shutil.copytree(sample_repo, clone)  # identical shas: must be de-duplicated
+    out = analyze_merged([sample_repo, tmp_path / "other"], Config(), tmp_path / "out", "all")
+    index = (out / "index.md").read_text()
+    assert "Merged repositories" in index and "| Commits analyzed | 8 |" in index
+    assert "sample/a.py" in (out / "hotspots.md").read_text()
