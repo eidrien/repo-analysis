@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import calendar
 from collections import Counter, defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 
-from ..report.blocks import Table
+from ..report.blocks import Heading, Paragraph, Table
 from .base import Metric, MetricResult
 from .registry import register
 
@@ -16,11 +16,19 @@ def _month_start(today: date, back: int) -> date:
     return date(index // 12, index % 12 + 1, 1)
 
 
+def percentile(sorted_values: list[float], q: float) -> float:
+    """Linear-interpolation percentile (the numpy default) of an ascending list."""
+    pos = (len(sorted_values) - 1) * q
+    low = int(pos)
+    high = min(low + 1, len(sorted_values) - 1)
+    return sorted_values[low] + (sorted_values[high] - sorted_values[low]) * (pos - low)
+
+
 @register
-class WeeklyActivity(Metric):
-    name = "weekly_activity"
-    title = "Weekly Activity"
-    description = "Commits per week and average weekly commits per month, for each contributor."
+class ContributorActivity(Metric):
+    name = "contributor_activity"
+    title = "Contributor Activity"
+    description = "Commits per week, average weekly commits per month and branch longevity, for each contributor."
     defaults = {
         "weeks": 4,
         "months": 6,
@@ -76,4 +84,40 @@ class WeeklyActivity(Metric):
             "Contributors are identified by author email. Merge commits and commits that only touch "
             "excluded files are not counted."
         )
-        return self.result(summary, [table])
+        branch_note, branch_table = self._branch_longevity(ctx, today)
+        return self.result(summary, [table, Heading("Branch longevity"), Paragraph(branch_note), branch_table])
+
+    def _branch_longevity(self, ctx, today: date) -> tuple[str, Table]:
+        now = datetime.combine(today, time.min, timezone.utc) if self.options["as_of"] else datetime.now(timezone.utc)
+        durations: dict[str, list[float]] = defaultdict(list)
+        open_count: Counter[str] = Counter()
+        names: dict[str, Counter[str]] = defaultdict(Counter)
+        for b in ctx.branches:
+            days = max(((b.end or now) - b.start).total_seconds() / 86400, 0.0)
+            durations[b.email].append(days)
+            open_count[b.email] += not b.merged
+            names[b.email][b.author] += 1
+
+        def row(label, values, still_open):
+            values = sorted(values)
+            return [label, len(values), still_open, sum(values) / len(values),
+                    percentile(values, 0.75), percentile(values, 0.90)]
+
+        rows = [row(names[e].most_common(1)[0][0], v, open_count[e]) for e, v in durations.items()]
+        rows.sort(key=lambda r: (-r[1], r[0].lower()))
+        if rows:
+            everyone = [d for v in durations.values() for d in v]
+            rows.append(row("**All**", everyone, sum(open_count.values())))
+        table = Table(
+            ["Contributor", "Branches", "Still open", "Avg age (days)", "P75 duration (days)", "P90 duration (days)"],
+            rows,
+        )
+        note = (
+            "A branch's lifetime runs from its first own commit (author date) to the date it was merged; "
+            "branches that are not merged yet are measured up to today, so \"age\" and \"duration\" use the same "
+            "scale. Merged branches are rebuilt from merge commits on the checked-out branch, so they are found "
+            "even after deletion; unmerged ones come from the local and remote branch refs. Branches merged by "
+            "squash or rebase leave no merge commit and are not detected. A branch belongs to the author with "
+            "most commits on it. Percentiles use linear interpolation."
+        )
+        return note, table

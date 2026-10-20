@@ -12,7 +12,7 @@ from pathlib import Path
 from . import git
 from .complexity import FileComplexity, measure_file
 from .config import Config
-from .model import Commit, FileChange, RepoHistory
+from .model import Branch, Commit, FileChange, RepoHistory
 
 
 def is_excluded(path: str, patterns: list[str]) -> bool:
@@ -40,6 +40,15 @@ class AnalysisContext:
             for f in git.list_files(root)
             if not is_excluded(f, self.config.exclude)
         }
+
+    @cached_property
+    def branches(self) -> list[Branch]:
+        """Merged and still-open branches of every repo, de-duplicated across clones."""
+        result: dict[str, Branch] = {}
+        for root in self.roots.values():
+            for branch in git.read_branches(root, self.config.since, self.config.until):
+                result.setdefault(branch.key, branch)
+        return list(result.values())
 
     @cached_property
     def revisions(self) -> Counter[str]:

@@ -33,7 +33,7 @@ def test_social_truck_factor(sample_repo):
 def test_end_to_end_writes_reports(sample_repo, tmp_path):
     out = analyze_repository(sample_repo, Config(), tmp_path / "out")
     names = {p.name for p in out.iterdir()}
-    assert names == {"index.md", "hotspots.md", "coupling.md", "age_churn.md", "social.md", "weekly_activity.md"}
+    assert names == {"index.md", "hotspots.md", "coupling.md", "age_churn.md", "social.md", "contributor_activity.md"}
     assert "[Hotspots](hotspots.md)" in (out / "index.md").read_text()
 
 
@@ -56,10 +56,10 @@ def test_scan_dir_analyzes_direct_subrepos(sample_repo, tmp_path):
     assert main(["analyze"]) == 1
 
 
-def test_weekly_activity_table(sample_repo):
+def test_contributor_activity_table(sample_repo):
     ctx = build_context(sample_repo, Config())
     # 2024-08-10 is a Saturday; the commit on 2024-07-10 (Bob) falls in July.
-    metric = available_metrics()["weekly_activity"]({"as_of": "2024-08-19", "months": 2})
+    metric = available_metrics()["contributor_activity"]({"as_of": "2024-08-19", "months": 2})
     table = metric.analyze(ctx).blocks[0]
     assert table.headers[1].startswith("Week -1 (Aug 12)")
     assert table.headers[5].startswith("Month -1 (Jul 2024)")
@@ -79,3 +79,23 @@ def test_merge_combines_repos(sample_repo, tmp_path):
     index = (out / "index.md").read_text()
     assert "Merged repositories" in index and "| Commits analyzed | 8 |" in index
     assert "sample/a.py" in (out / "hotspots.md").read_text()
+
+
+def test_branch_longevity(branchy_repo):
+    ctx = build_context(branchy_repo, Config())
+    assert {b.name: b.merged for b in ctx.branches} == {"feature": True, "wip": False}
+    metric = available_metrics()["contributor_activity"]({"as_of": "2024-01-22"})
+    table = metric.analyze(ctx).blocks[-1]
+    by_name = {r[0]: r for r in table.rows}
+    assert by_name["Bob"][1:] == [1, 0, 9.0, 9.0, 9.0]  # 01-02 12:00 -> 01-11 12:00
+    assert by_name["Alice"][1:3] == [1, 1]  # open since 01-12 12:00
+    assert by_name["Alice"][3] == 9.5
+    assert by_name["**All**"][1:3] == [2, 1]
+    assert by_name["**All**"][4] == 9.375  # linear-interpolated P75 of [9.0, 9.5]
+
+
+def test_percentile():
+    from crimescene.metrics.contributor_activity import percentile
+    assert percentile([1, 2, 3, 4, 5], 0.5) == 3
+    assert percentile([10], 0.9) == 10
+    assert percentile([0, 10], 0.9) == 9

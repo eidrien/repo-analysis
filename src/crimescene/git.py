@@ -7,11 +7,17 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-from .model import Commit, FileChange, RepoHistory
+from collections import Counter
+
+from .model import Branch, Commit, FileChange, RepoHistory
 
 _RECORD = "\x1e"
 _FIELD = "\x1f"
 _LOG_FORMAT = _RECORD + _FIELD.join(["%H", "%an", "%ae", "%aI", "%s"])
+_BRANCH_NAME = re.compile(
+    r"^Merge (?:pull request #\d+ from \S+?/|pull request #\d+ from |"
+    r"(?:remote-tracking )?branch ')(?P<name>[^'\s]+)"
+)
 _BRACE_RENAME = re.compile(r"^(.*)\{(.*) => (.*)\}(.*)$")
 
 
@@ -107,3 +113,60 @@ def read_history(
         )
     commits.reverse()
     return RepoHistory(commits)
+
+
+def _branch_name(message: str, fallback: str) -> str:
+    match = _BRANCH_NAME.match(message)
+    return match.group("name") if match else fallback
+
+
+def _branch_commits(repo: Path, *revs: str) -> tuple[datetime, str, str] | None:
+    """(earliest author date, main author, main author email) of the given rev range."""
+    out = run_git(repo, "log", "--format=%aI%x1f%an%x1f%ae", *revs)
+    rows = [line.split(_FIELD) for line in out.splitlines() if line]
+    if not rows:
+        return None
+    start = min(datetime.fromisoformat(r[0]) for r in rows)
+    (author, email), _ = Counter((r[1], r[2].lower()) for r in rows).most_common(1)[0]
+    return start, author, email
+
+
+def read_branches(repo: Path, since: str | None = None, until: str | None = None) -> list[Branch]:
+    """Branch lifetimes, from merge commits on the first-parent line of HEAD and from
+    unmerged branch refs. Squash/rebase merges leave no trace of the branch, so they are missed."""
+    name = repo.name
+    branches: list[Branch] = []
+
+    log_args = ["log", "--first-parent", "--merges", f"--format=%H{_FIELD}%P{_FIELD}%cI{_FIELD}%s"]
+    if since:
+        log_args.append(f"--since={since}")
+    if until:
+        log_args.append(f"--until={until}")
+    for line in run_git(repo, *log_args).splitlines():
+        sha, parents, merged_at, subject = line.split(_FIELD, 3)
+        first, *others = parents.split()
+        info = _branch_commits(repo, *others, f"^{first}")
+        if info is None:
+            continue
+        start, author, email = info
+        branches.append(Branch(sha, _branch_name(subject, sha[:7]), name, author, email,
+                               start, datetime.fromisoformat(merged_at)))
+
+    try:
+        current = run_git(repo, "symbolic-ref", "--short", "-q", "HEAD").strip()
+    except GitError:  # detached HEAD
+        current = ""
+    refs = run_git(repo, "for-each-ref", "--format=%(refname) %(objectname)", "refs/heads", "refs/remotes")
+    seen: set[str] = set()
+    for line in sorted(refs.splitlines(), key=lambda l: l.startswith("refs/remotes")):  # local first
+        ref, tip = line.split()
+        short = ref.split("/", 2)[2] if ref.startswith("refs/remotes/") else ref.removeprefix("refs/heads/")
+        if short.endswith("/HEAD") or tip in seen or current and short.rsplit("/", 1)[-1] == current:
+            continue
+        seen.add(tip)
+        info = _branch_commits(repo, tip, "^HEAD")
+        if info is None:  # fully merged already
+            continue
+        start, author, email = info
+        branches.append(Branch(tip, short, name, author, email, start, None))
+    return branches

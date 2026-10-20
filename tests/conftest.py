@@ -33,3 +33,29 @@ def sample_repo(tmp_path: Path) -> Path:
     _git(repo, "mv", "c.py", "d.py")
     _git(repo, "commit", "-qm", "rename c", date="2024-08-10T12:00:00", author="Bob")
     return repo
+
+
+@pytest.fixture
+def branchy_repo(tmp_path: Path) -> Path:
+    """Bob's `feature` branch lived 9 days and was merged; Alice's `wip` is still open."""
+    repo = tmp_path / "branchy"
+    repo.mkdir()
+
+    def commit(name: str, day: int, author: str) -> None:
+        (repo / name).write_text(f"{name}{day}\n")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-qm", f"edit {name}", date=f"2024-01-{day:02d}T12:00:00+0000", author=author)
+
+    _git(repo, "init", "-q", "-b", "main")
+    commit("base.txt", 1, "Alice")
+    _git(repo, "checkout", "-qb", "feature")
+    commit("f1.txt", 2, "Bob")
+    commit("f2.txt", 6, "Bob")
+    _git(repo, "checkout", "-q", "main")
+    commit("main.txt", 3, "Alice")
+    _git(repo, "merge", "--no-ff", "-qm", "Merge branch 'feature'", "feature",
+         date="2024-01-11T12:00:00+0000", author="Alice")
+    _git(repo, "checkout", "-qb", "wip")
+    commit("wip.txt", 12, "Alice")
+    _git(repo, "checkout", "-q", "main")
+    return repo
