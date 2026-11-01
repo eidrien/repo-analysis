@@ -145,6 +145,17 @@ def test_ticket_refs_include_merges(branchy_repo):
     assert [c.sha for c in off.history.commits] == [c.sha for c in on.history.commits]
 
 
+def test_ticket_refs_by_author(sample_repo):
+    from conftest import _git
+    (sample_repo / "e.py").write_text("x\n")
+    _git(sample_repo, "add", "-A")
+    _git(sample_repo, "commit", "-qm", "[AB-1] add e", date="2024-09-10T12:00:00", author="Bob")
+    rows = _ticket_rows(available_metrics()["ticket_refs"]().analyze(build_context(sample_repo, Config())))
+    assert rows["Coverage by author"] == [
+        ["Alice", 6, 0, "0%"], ["Bob", 3, 1, "33%"], ["**All**", 9, 1, "11%"],
+    ]
+
+
 def test_ticket_refs_ignores_utf8(tmp_path):
     from conftest import _git
     repo = tmp_path / "r"; repo.mkdir()

@@ -72,8 +72,22 @@ class TicketRefs(Metric):
             total_hit[1] += bool(key)
         styles_count = Counter(style(c) for c in everything)
 
+        by_email: dict[str, list[int]] = {}
+        names: dict[str, Counter[str]] = {}
+        for commit in everything:
+            total_hit = by_email.setdefault(commit.email, [0, 0])
+            total_hit[0] += 1
+            total_hit[1] += bool(find(commit))
+            names.setdefault(commit.email, Counter())[commit.author] += 1
+        authors = sorted(((names[e].most_common(1)[0][0], t, h) for e, (t, h) in by_email.items()),
+                         key=lambda r: (-r[1], r[0]))
+        author_rows = [[n, t, h, f"{h / t:.0%}"] for n, t, h in authors]
+        all_hits = sum(h for _, _, h in authors)
+        author_rows.append(["**All**", len(everything), all_hits, f"{all_hits / len(everything):.0%}"])
+
         blocks = [
             Table(["Scope", "Commits", "With ticket", "Coverage"], coverage, caption="Coverage"),
+            Table(["Author", "Commits", "With ticket", "Coverage"], author_rows, caption="Coverage by author"),
             Table(["Prefix", "Commits"], [[p, n] for p, n in prefixes.most_common()], caption="Ticket prefixes"),
             Table(["Message style", "Commits"], [[s, n] for s, n in styles_count.most_common()], caption="Message styles"),
             Table(["Year", "Commits", "With ticket", "Coverage"],
@@ -81,7 +95,7 @@ class TicketRefs(Metric):
         ]
         summary = (
             f"A commit counts as referencing a ticket when its subject matches `{pattern}` "
-            f"(prefixes {sorted(ignored)} are ignored, e.g. UTF-8)."
+            f"(prefixes {sorted(ignored)} are ignored, e.g. UTF-8). Authors are identified by email."
         )
         if not ctx.history.merges:
             summary += (
