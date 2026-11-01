@@ -1,0 +1,23 @@
+tests/test_analysis.py
+  s_fe91922754cf54::t_b7cf485e7d77ce 148-158
+src/crimescene/metrics/ticket_refs.py
+  s_fe91922754cf54::t_b7cf485e7d77ce 75-87,90,98
+README.md
+  s_fe91922754cf54::t_b7cf485e7d77ce 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3686ea0432761367c1005e233a340c3257cf1a9",
+  "prompts": {},
+  "sessions": {
+    "s_fe91922754cf54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e4e9157-1f86-44d1-9252-347b458cd14b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Adrián Perreau <aperreau@gmail.com>"
+    }
+  }
+}
