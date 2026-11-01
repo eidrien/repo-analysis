@@ -28,7 +28,7 @@ def percentile(sorted_values: list[float], q: float) -> float:
 class ContributorActivity(Metric):
     name = "contributor_activity"
     title = "Contributor Activity"
-    description = "Commits per week, average weekly commits per month and branch longevity, for each contributor."
+    description = "Commits per week, average weekly commits per month, average edited lines per commit and branch longevity, for each contributor."
     defaults = {
         "weeks": 4,
         "months": 6,
@@ -52,9 +52,11 @@ class ContributorActivity(Metric):
 
         names: dict[str, Counter[str]] = defaultdict(Counter)
         days: dict[str, list[date]] = defaultdict(list)
+        edits: dict[str, list[int]] = defaultdict(list)  # edited lines, parallel to `days`
         for c in ctx.history.commits:
             names[c.email][c.author] += 1
             days[c.email].append(c.date.date())
+            edits[c.email].append(sum(f.added + f.deleted for f in c.changes))
 
         rows = []
         for email, commit_days in days.items():
@@ -64,10 +66,10 @@ class ContributorActivity(Metric):
                 for _, s, e in months
             ]
             if any(week_counts) or any(month_avgs):
-                rows.append((names[email].most_common(1)[0][0], week_counts, month_avgs))
+                rows.append((names[email].most_common(1)[0][0], week_counts, month_avgs, email))
         rows.sort(key=lambda r: (-sum(r[1]), -sum(r[2]), r[0].lower()))
 
-        table_rows = [[name, *wc, *ma] for name, wc, ma in rows]
+        table_rows = [[name, *wc, *ma] for name, wc, ma, _ in rows]
         if rows:
             table_rows.append([
                 "**Total**",
@@ -84,8 +86,47 @@ class ContributorActivity(Metric):
             "Contributors are identified by author email. Merge commits and commits that only touch "
             "excluded files are not counted."
         )
+        edits_note, edits_table = self._avg_edited_lines(rows, days, edits, weeks, months)
         branch_note, branch_table = self._branch_longevity(ctx, today)
-        return self.result(summary, [table, Heading("Branch longevity"), Paragraph(branch_note), branch_table])
+        return self.result(summary, [
+            table,
+            Heading("Average edited lines per commit"), Paragraph(edits_note), edits_table,
+            Heading("Branch longevity"), Paragraph(branch_note), branch_table,
+        ])
+
+    @staticmethod
+    def _avg_edited_lines(rows, days, edits, weeks, months) -> tuple[str, Table]:
+        windows = [(s, e) for _, s, e in weeks] + [(s, e) for _, s, e in months]
+
+        def averages(pairs: list[tuple[date, int]]) -> list:
+            cells = []
+            for s, e in windows:
+                inside = [n for d, n in pairs if s <= d < e]
+                cells.append(sum(inside) / len(inside) if inside else "-")
+            total = sum(n for _, n in pairs)
+            return [*cells, total / len(pairs) if pairs else "-"]
+
+        def pairs_of(email: str) -> list[tuple[date, int]]:
+            return list(zip(days[email], edits[email]))
+
+        table_rows = [[name, *averages(pairs_of(email))] for name, _, _, email in rows]
+        if rows:
+            everyone = [p for email in days for p in pairs_of(email)]
+            table_rows.append(["**Total**", *averages(everyone)])
+        headers = [
+            "Contributor",
+            *(w[0] for w in weeks),
+            *(m[0].replace(", avg/week", "") for m in months),
+            "All time",
+        ]
+        note = (
+            "Edited lines are the lines added plus the lines removed in a commit (a modified line counts as "
+            "two). Each cell is the average per commit over the commits made in that week or month; \"-\" "
+            "means no commits. \"All time\" is the contributor's average over their whole analyzed history, "
+            "not only the columns shown. The Total row is the average over all contributors' commits. "
+            "Binary files, merge commits and excluded files are not counted."
+        )
+        return note, Table(headers, table_rows)
 
     def _branch_longevity(self, ctx, today: date) -> tuple[str, Table]:
         now = datetime.combine(today, time.min, timezone.utc) if self.options["as_of"] else datetime.now(timezone.utc)

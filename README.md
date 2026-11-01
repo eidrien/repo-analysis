@@ -46,7 +46,7 @@ With `--merge`, all given repositories (paths and/or `--scan-dir`) are analyzed 
 | `hotspots` | change frequency × indentation complexity per file |
 | `coupling` | temporal coupling between files changed in the same commit |
 | `age_churn` | code age distribution, monthly churn, highest-churn files |
-| `contributor_activity` | per contributor: commits for the last N calendar weeks, average weekly commits per previous month, and branch longevity (average age, P75/P90 duration) |
+| `contributor_activity` | per contributor: commits for the last N calendar weeks, average weekly commits per previous month, average edited lines (added + removed) per commit per week/month and all-time, and branch longevity (average age, P75/P90 duration) |
 | `social` | authors, ownership, knowledge-loss risk, truck factor, communication paths |
 
 ## Configuration (`crimescene.toml`)

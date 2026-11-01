@@ -69,6 +69,21 @@ def test_contributor_activity_table(sample_repo):
     assert table.rows[-1][0] == "**Total**"
 
 
+def test_contributor_avg_edited_lines(sample_repo):
+    ctx = build_context(sample_repo, Config())
+    metric = available_metrics()["contributor_activity"]({"as_of": "2024-08-19", "months": 2})
+    blocks = metric.analyze(ctx).blocks
+    table = blocks[blocks.index(next(b for b in blocks if getattr(b, "text", "") == "Average edited lines per commit")) + 2]
+    assert table.headers[-1] == "All time"
+    assert table.headers[5] == "Month -1 (Jul 2024)"
+    bob = next(r for r in table.rows if r[0] == "Bob")
+    assert bob[1:5] == ["-", 0.0, "-", "-"]  # pure rename: 0 edited lines
+    assert bob[5:7] == [1.0, "-"]  # July: "add c" is one added line
+    assert bob[-1] == 0.5
+    total = table.rows[-1]
+    assert total[0] == "**Total**" and total[-1] == 25 / 8  # Alice: 6 commits x 4 lines, Bob: 1
+
+
 def test_merge_combines_repos(sample_repo, tmp_path):
     import shutil
     from crimescene.analyzer import analyze_merged
