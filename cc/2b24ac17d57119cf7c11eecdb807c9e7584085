@@ -1,0 +1,35 @@
+README.md
+  s_57d5116ad3aa95::t_cfe33adff7714c 50
+src/crimescene/cli.py
+  s_57d5116ad3aa95::t_c165914353a69d 32-33,75
+src/crimescene/config.py
+  s_57d5116ad3aa95::t_a38cd0decb1706 22,39
+src/crimescene/context.py
+  s_57d5116ad3aa95::t_a4835d100ed341 75-76,78-79,87,92,108,110-111,115-118,120-121
+src/crimescene/git.py
+  s_57d5116ad3aa95::t_7f6e31cf955008 79-95,97,132-133
+src/crimescene/metrics/builtin.py
+  s_57d5116ad3aa95::t_7fe493db1e3da6 3
+src/crimescene/metrics/ticket_refs.py
+  s_57d5116ad3aa95::t_4c3ed07157c915 1-91
+src/crimescene/model.py
+  s_57d5116ad3aa95::t_10e051670b22a3 5,39-40
+tests/test_analysis.py
+  s_57d5116ad3aa95::t_5a4ea270297dc7 9,36,117-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc2b24ac17d57119cf7c11eecdb807c9e7584085",
+  "prompts": {},
+  "sessions": {
+    "s_57d5116ad3aa95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "152522ee-4c07-483a-ab5e-b5c77b7905ae",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Adrián Perreau <aperreau@gmail.com>"
+    }
+  }
+}
