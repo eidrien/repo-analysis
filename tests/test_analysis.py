@@ -6,7 +6,7 @@ from crimescene.report import Paragraph
 
 
 def test_all_metrics_registered():
-    assert {"hotspots", "coupling", "age_churn", "social"} <= set(available_metrics())
+    assert {"hotspots", "coupling", "age_churn", "social", "contributor_activity", "ticket_refs"} <= set(available_metrics())
 
 
 def test_hotspot_ranks_complex_frequently_changed_file_first(sample_repo):
@@ -33,7 +33,7 @@ def test_social_truck_factor(sample_repo):
 def test_end_to_end_writes_reports(sample_repo, tmp_path):
     out = analyze_repository(sample_repo, Config(), tmp_path / "out")
     names = {p.name for p in out.iterdir()}
-    assert names == {"index.md", "hotspots.md", "coupling.md", "age_churn.md", "social.md", "contributor_activity.md"}
+    assert names == {"index.md", "hotspots.md", "coupling.md", "age_churn.md", "social.md", "contributor_activity.md", "ticket_refs.md"}
     assert "[Hotspots](hotspots.md)" in (out / "index.md").read_text()
 
 
@@ -114,3 +114,43 @@ def test_percentile():
     assert percentile([1, 2, 3, 4, 5], 0.5) == 3
     assert percentile([10], 0.9) == 10
     assert percentile([0, 10], 0.9) == 9
+
+
+def _ticket_rows(result):
+    return {b.caption: b.rows for b in result.blocks}
+
+
+def test_ticket_refs_without_merges_notes_understatement(sample_repo):
+    ctx = build_context(sample_repo, Config())
+    result = available_metrics()["ticket_refs"]().analyze(ctx)
+    assert ctx.history.merges == []
+    assert _ticket_rows(result)["Coverage"][0][2] == 0
+    assert "--include-merges" in result.summary
+
+
+def test_ticket_refs_include_merges(branchy_repo):
+    # the merge subject has no ticket; add one via a ticketed branch merge
+    import subprocess
+    from conftest import _git
+    _git(branchy_repo, "merge", "--no-ff", "-qm", "Merged in T1-42/task/x (pull request #1)", "wip",
+         date="2024-02-01T12:00:00+0000")
+    off = build_context(branchy_repo, Config())
+    on = build_context(branchy_repo, Config(include_merges=True))
+    assert off.history.merges == [] and len(on.history.merges) == 2
+    rows = _ticket_rows(available_metrics()["ticket_refs"]().analyze(on))
+    assert rows["Coverage"][1][:3] == ["Merge commits", 2, 1]
+    assert rows["Ticket prefixes"] == [["T1", 1]]
+    assert ["Merged in KEY-1/branch", 1] in rows["Message styles"]
+    # other metrics see the same commits either way
+    assert [c.sha for c in off.history.commits] == [c.sha for c in on.history.commits]
+
+
+def test_ticket_refs_ignores_utf8(tmp_path):
+    from conftest import _git
+    repo = tmp_path / "r"; repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    (repo / "a.txt").write_text("x\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "fix UTF-8 handling", date="2024-01-01T12:00:00")
+    result = available_metrics()["ticket_refs"]().analyze(build_context(repo, Config()))
+    assert _ticket_rows(result)["Coverage"][0][2] == 0

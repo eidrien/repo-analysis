@@ -29,6 +29,8 @@ def _build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("-c", "--config", type=Path, help="TOML config file")
     analyze.add_argument("--since", help="Only commits after this date (git syntax, e.g. 2024-01-01)")
     analyze.add_argument("--until", help="Only commits before this date")
+    analyze.add_argument("--include-merges", action="store_true",
+                         help="Also read merge commits (used by metrics such as ticket_refs; other metrics ignore them)")
     analyze.add_argument("-m", "--metrics", help="Comma-separated metrics to run (default: all)")
     analyze.add_argument("-x", "--exclude", action="append", default=[], metavar="GLOB", help="Extra path glob to exclude (repeatable)")
 
@@ -70,6 +72,7 @@ def _analyze(args: argparse.Namespace) -> int:
     config.since = args.since or config.since
     config.until = args.until or config.until
     config.exclude += args.exclude
+    config.include_merges = args.include_merges or config.include_merges
     if args.metrics:
         config.metrics = [m.strip() for m in args.metrics.split(",") if m.strip()]
 

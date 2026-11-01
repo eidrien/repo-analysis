@@ -72,10 +72,11 @@ class AnalysisContext:
         return result
 
 
-def _load_commits(root: Path, config: Config, prefix: str) -> list[Commit]:
-    """Filtered history of one repo with paths prefixed (empty prefix = unchanged)."""
+def _load_commits(root: Path, config: Config, prefix: str) -> tuple[list[Commit], list[Commit]]:
+    """Filtered (commits, merges) of one repo with paths prefixed (empty prefix = unchanged)."""
     kept = []
-    for commit in git.read_history(root, config.since, config.until).commits:
+    history = git.read_history(root, config.since, config.until, config.include_merges)
+    for commit in history.commits:
         changes = tuple(
             FileChange(prefix + c.path, c.added, c.deleted)
             for c in commit.changes
@@ -83,12 +84,12 @@ def _load_commits(root: Path, config: Config, prefix: str) -> list[Commit]:
         )
         if changes:
             kept.append(replace(commit, changes=changes))
-    return kept
+    return kept, history.merges
 
 
 def build_context(repo: Path, config: Config) -> AnalysisContext:
     root = git.repo_root(repo)
-    history = RepoHistory(_load_commits(root, config, ""))
+    history = RepoHistory(*_load_commits(root, config, ""))
     return AnalysisContext({"": root}, root.name, history, config)
 
 
@@ -104,10 +105,17 @@ def build_merged_context(repos: list[Path], config: Config, name: str) -> Analys
 
     seen: set[str] = set()  # the same commit can exist in several clones/forks
     commits: list[Commit] = []
+    merges: list[Commit] = []
     for prefix, root in roots.items():
-        for commit in _load_commits(root, config, prefix):
+        kept, merged = _load_commits(root, config, prefix)
+        for commit in kept:
             if commit.sha not in seen:
                 seen.add(commit.sha)
                 commits.append(commit)
+        for commit in merged:
+            if commit.sha not in seen:
+                seen.add(commit.sha)
+                merges.append(commit)
     commits.sort(key=lambda c: c.date)
-    return AnalysisContext(roots, name, RepoHistory(commits), config)
+    merges.sort(key=lambda c: c.date)
+    return AnalysisContext(roots, name, RepoHistory(commits, merges), config)

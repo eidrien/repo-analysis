@@ -47,6 +47,7 @@ With `--merge`, all given repositories (paths and/or `--scan-dir`) are analyzed 
 | `coupling` | temporal coupling between files changed in the same commit |
 | `age_churn` | code age distribution, monthly churn, highest-churn files |
 | `contributor_activity` | per contributor: commits for the last N calendar weeks, average weekly commits per previous month, average edited lines (added + removed) per commit per week/month and all-time, and branch longevity (average age, P75/P90 duration) |
+| `ticket_refs` | share of commits referencing a ticket (e.g. Jira) by scope, prefix, message style and year; most accurate with `--include-merges` (reads merge commits, which other metrics ignore; also `include_merges = true` under `[analysis]`) |
 | `social` | authors, ownership, knowledge-loss risk, truck factor, communication paths |
 
 ## Configuration (`crimescene.toml`)

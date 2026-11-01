@@ -76,8 +76,25 @@ def parse_renamed_path(raw: str) -> tuple[str, str]:
     return raw, raw
 
 
+def read_merges(repo: Path, since: str | None = None, until: str | None = None) -> list[Commit]:
+    """Merge commits (oldest first). They carry no file changes."""
+    args = ["log", "--merges", f"--pretty=format:{_LOG_FORMAT}"]
+    if since:
+        args.append(f"--since={since}")
+    if until:
+        args.append(f"--until={until}")
+    merges = []
+    for block in run_git(repo, *args).split(_RECORD):
+        if not block.strip():
+            continue
+        sha, author, email, date, message = block.strip("\n").split(_FIELD, 4)
+        merges.append(Commit(sha, author, email.lower(), datetime.fromisoformat(date), message, ()))
+    merges.reverse()
+    return merges
+
+
 def read_history(
-    repo: Path, since: str | None = None, until: str | None = None
+    repo: Path, since: str | None = None, until: str | None = None, include_merges: bool = False
 ) -> RepoHistory:
     """Parse `git log --numstat` into commits, following renames to latest paths."""
     args = ["log", "--numstat", "-M", "--no-merges", f"--pretty=format:{_LOG_FORMAT}"]
@@ -112,7 +129,8 @@ def read_history(
             Commit(sha, author, email.lower(), datetime.fromisoformat(date), message, tuple(changes))
         )
     commits.reverse()
-    return RepoHistory(commits)
+    merges = read_merges(repo, since, until) if include_merges else []
+    return RepoHistory(commits, merges)
 
 
 def _branch_name(message: str, fallback: str) -> str:

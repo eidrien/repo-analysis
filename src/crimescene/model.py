@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 
@@ -36,6 +36,8 @@ class RepoHistory:
     """Commits in chronological order (oldest first)."""
 
     commits: list[Commit]
+    # Merge commits (no file changes); only filled when include_merges is set.
+    merges: list[Commit] = field(default_factory=list)
 
     def __len__(self) -> int:
         return len(self.commits)

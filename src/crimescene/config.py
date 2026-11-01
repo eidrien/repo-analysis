@@ -19,6 +19,7 @@ class Config:
     since: str | None = None
     until: str | None = None
     exclude: list[str] = field(default_factory=lambda: list(DEFAULT_EXCLUDES))
+    include_merges: bool = False  # also read merge commits (see RepoHistory.merges)
     metrics: list[str] | None = None  # None = all registered metrics
     metric_options: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -35,6 +36,7 @@ class Config:
         if "exclude" in analysis:
             config.exclude = list(analysis["exclude"])
         config.exclude += analysis.get("extra_exclude", [])
+        config.include_merges = bool(analysis.get("include_merges", False))
         config.metrics = analysis.get("metrics")
         config.metric_options = {k: dict(v) for k, v in data.get("metrics", {}).items()}
         return config
